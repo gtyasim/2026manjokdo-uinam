@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2026학년도 2학기 초등 돌봄교육 만족도 조사</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', 'Pretendard', sans-serif;
+            background-color: #f0fdf4;
+        }
+        .scale-radio:checked + label {
+            background-color: #22c55e;
+            color: white;
+            border-color: #22c55e;
+        }
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="text-gray-800 h-screen flex flex-col">
+
+    <header class="bg-green-600 text-white shadow-md p-4 flex justify-center items-center z-10 sticky top-0">
+        <h1 class="text-lg md:text-xl font-bold cursor-pointer" onclick="navigate('home')">
+            <i class="fa-solid fa-seedling mr-2"></i>초등 돌봄교육 만족도 조사
+        </h1>
+    </header>
+
+    <main id="app-container" class="flex-grow p-4 overflow-y-auto w-full max-w-4xl mx-auto flex flex-col items-center">
+        <!-- JS로 화면 전환됨 -->
+    </main>
+
+    <script>
+        const labelsType1 = ["매우 그렇다", "그렇다", "보통이다", "그렇지 않다", "매우 그렇지 않다"];
+        const labelsType2 = ["매우 충분하다", "충분하다", "보통이다", "부족하다", "매우 부족하다"];
+
+        window.currentRole = null;
+        window.completedPrograms = [];
+
+        // 새로 발급받으신 최신 앱스 스크립트 주소로 업데이트!
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxZ64rEzGVoc1iVFplJBVJ0Zbkz5yPfrICVraWry-yvIg-xUhzdZKJpl3ajBvuhWOOg/exec";
+
+        window.questionBanks = {
+            parentGeneral: {
+                title: "2026학년도 2학기 초등 돌봄교육 운영전반 만족도 조사 (학부모용)",
+                questions: [
+                    { id: "q1", text: "1. 초등 돌봄교육 운영 전반에 대해 만족한다.", type: "scale", labels: labelsType1 },
+                    { id: "q2", text: "2. 현재 참여하고 있는 초등 돌봄교육 프로그램이 자녀의 특기·적성 계발 또는 학업 실력 향상에 도움이 되었다.", type: "scale", labels: labelsType1 },
+                    { id: "q3", text: "3. 초등 돌봄교육 프로그램이 사교육비를 줄이는 데 도움이 되었다.", type: "scale", labels: labelsType1 },
+                    { id: "q4", text: "4. 앞으로 초등 돌봄교육 프로그램에 자녀를 계속 참여시킬 의사가 있다.", type: "scale", labels: labelsType1 },
+                    { id: "q5", text: "5. 기타 (개선 사항 및 추가 개설 희망 프로그램 등)", type: "text" }
+                ]
+            },
+            studentGeneral: {
+                title: "2026학년도 2학기 초등 돌봄교육 운영전반 만족도 조사 (학생용)",
+                questions: [
+                    { id: "q1", text: "1. 현재 참여하고 있는 초등 돌봄교육 프로그램에 대해 만족한다.", type: "scale", labels: labelsType1 },
+                    { id: "q2", text: "2. 초등 돌봄교육 프로그램을 선택할 때, 프로그램에 대한 정보 제공(안내)은 충분했다.", type: "scale", labels: labelsType2 },
+                    { id: "q3", text: "3. 현재 참여하고 있는 초등 돌봄교육 프로그램이 특기·적성 계발 또는 학업 실력 향상에 도움이 되었다.", type: "scale", labels: labelsType1 },
+                    { id: "q4", text: "4. 앞으로 초등 돌봄교육 프로그램에 계속 참여하고 싶다.", type: "scale", labels: labelsType1 },
+                    { id: "q5", text: "5. 기타 (개선 사항 및 추가 개설 희망 프로그램 등)", type: "text" }
+                ]
+            },
+            programSpecific: {
+                title: "프로그램별 만족도 조사",
+                requiresProgramName: true,
+                questions: [
+                    { id: "q1", text: "1. 강사가 프로그램 운영 시간을 잘 지켰다.", type: "scale", labels: labelsType1 },
+                    { id: "q2", text: "2. 사용된 교재 및 교구는 프로그램 활동에 도움이 되었다.", type: "scale", labels: labelsType1 },
+                    { id: "q3", text: "3. 학생이 프로그램에 적극 참여할 수 있도록 관심을 가지고 지도했다.", type: "scale", labels: labelsType2 },
+                    { id: "q4", text: "4. 이 프로그램이 특기·적성 계발 또는 학업 실력 향상에 도움이 되었다.", type: "scale", labels: labelsType1 },
+                    { id: "q5", text: "5. 기타 하고 싶은 말", type: "text" }
+                ]
+            }
+        };
+
+        window.navigate = function(view, params = null) {
+            const container = document.getElementById('app-container');
+            container.innerHTML = '';
+            
+            if (view === 'home') {
+                window.currentRole = null;
+                window.completedPrograms = [];
+                window.renderHome(container);
+            } else if (view === 'grade_menu') {
+                window.renderGradeMenu(container);
+            } else if (view === 'role_menu') {
+                window.currentRole = params.role;
+                window.renderRoleMenu(container);
+            } else if (view === 'survey_form') {
+                window.renderSurveyForm(container, params.type);
+            } else if (view === 'survey_complete') {
+                window.renderSurveyComplete(container, params.type);
+            }
+        };
+
+        window.renderHome = function(container) {
+            container.innerHTML = `
+                <div class="w-full flex flex-col items-center justify-center flex-grow fade-in mt-10">
+                    <div class="bg-white p-8 rounded-2xl shadow-lg text-center max-w-md w-full border-t-4 border-green-500">
+                        <div class="flex items-center justify-center gap-3 mb-4">
+                            <i class="fa-solid fa-school text-4xl text-green-500"></i>
+                            <h2 class="text-2xl font-bold text-gray-700">의성남부초등학교</h2>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2">초등 돌봄교육 만족도 조사</h3>
+                        <p class="text-gray-500 mb-8 text-sm">참여하시는 분의 구분을 선택해주세요.<br>본 조사는 무기명으로 진행됩니다.</p>
+                        
+                        <div class="flex flex-col gap-4 w-full">
+                            <button onclick="navigate('role_menu', {role: 'parent'})" class="flex items-center justify-center p-4 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl border border-blue-200 transition font-bold text-lg">
+                                <i class="fa-solid fa-user-group mr-3 text-xl"></i> 학부모님
+                            </button>
+                            <button onclick="navigate('grade_menu')" class="flex items-center justify-center p-4 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 rounded-xl border border-yellow-200 transition font-bold text-lg">
+                                <i class="fa-solid fa-child-reaching mr-3 text-xl"></i> 학생
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        window.renderGradeMenu = function(container) {
+            container.innerHTML = `
+                <div class="w-full flex flex-col items-center justify-center flex-grow fade-in mt-10">
+                    <button onclick="navigate('home')" class="self-start mb-4 text-gray-500 hover:text-gray-800 transition">
+                        <i class="fa-solid fa-arrow-left mr-1"></i> 처음으로
+                    </button>
+                    <div class="bg-white p-8 rounded-2xl shadow-lg text-center max-w-md w-full border-t-4 border-yellow-500">
+                        <h3 class="text-xl font-bold mb-6 text-gray-800">학년군을 선택해주세요</h3>
+                        
+                        <div class="flex flex-col gap-4 w-full">
+                            <button onclick="navigate('role_menu', {role: 'student_low'})" class="flex items-center justify-center p-4 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 rounded-xl border border-yellow-200 transition font-bold text-lg">
+                                1~2학년
+                            </button>
+                            <button onclick="navigate('role_menu', {role: 'student_high'})" class="flex items-center justify-center p-4 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 rounded-xl border border-yellow-200 transition font-bold text-lg">
+                                3~6학년
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        window.renderRoleMenu = function(container) {
+            let roleName = '학부모';
+            if (window.currentRole === 'student_low') roleName = '학생 (1~2학년)';
+            if (window.currentRole === 'student_high') roleName = '학생 (3~6학년)';
+            
+            const icon = window.currentRole === 'parent' ? '<i class="fa-solid fa-user-group text-blue-500"></i>' : '<i class="fa-solid fa-child-reaching text-yellow-500"></i>';
+            
+            let programSpecificHtml = '';
+            if (window.currentRole && window.currentRole.startsWith('student')) {
+                programSpecificHtml = `
+                    <div onclick="navigate('survey_form', {type: 'programSpecific'})" class="bg-white p-6 rounded-xl shadow hover:shadow-md cursor-pointer transition border border-gray-100 group">
+                        <div class="bg-purple-100 w-12 h-12 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-shapes text-purple-600 text-xl"></i>
+                        </div>
+                        <h3 class="font-bold text-lg mb-2">프로그램별 만족도 조사</h3>
+                        <p class="text-gray-500 text-sm">참여중인 개별 프로그램에 대한 만족도를 조사합니다.</p>
+                    </div>
+                `;
+            }
+
+            const backTarget = (window.currentRole && window.currentRole.startsWith('student')) ? 'grade_menu' : 'home';
+
+            container.innerHTML = `
+                <div class="w-full flex flex-col flex-grow fade-in max-w-2xl mt-8">
+                    <button onclick="navigate('${backTarget}')" class="self-start mb-4 text-gray-500 hover:text-gray-800 transition">
+                        <i class="fa-solid fa-arrow-left mr-1"></i> 뒤로가기
+                    </button>
+                    
+                    <div class="bg-white p-6 rounded-2xl shadow-md border-l-4 border-green-500 mb-6">
+                        <h2 class="text-xl font-bold flex items-center gap-2">
+                            ${icon} ${roleName} 만족도 조사 메뉴
+                        </h2>
+                        <p class="text-gray-600 mt-2 text-sm">참여하실 설문조사를 선택해주세요.</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div onclick="navigate('survey_form', {type: window.currentRole === 'parent' ? 'parentGeneral' : 'studentGeneral'})" class="bg-white p-6 rounded-xl shadow hover:shadow-md cursor-pointer transition border border-gray-100 group">
+                            <div class="bg-green-100 w-12 h-12 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                <i class="fa-regular fa-clipboard text-green-600 text-xl"></i>
+                            </div>
+                            <h3 class="font-bold text-lg mb-2">운영 전반 만족도 조사</h3>
+                            <p class="text-gray-500 text-sm">초등 돌봄교육 운영 전반에 대한 만족도를 조사합니다.</p>
+                        </div>
+                        ${programSpecificHtml}
+                    </div>
+                </div>
+            `;
+        };
+
+        window.renderSurveyForm = function(container, type) {
+            const surveyData = window.questionBanks[type];
+            let formHTML = `
+                <div class="w-full fade-in max-w-3xl mt-4 mb-10">
+                    <button onclick="navigate('role_menu', {role: window.currentRole})" class="mb-4 text-gray-500 hover:text-gray-800 transition block">
+                        <i class="fa-solid fa-arrow-left mr-1"></i> 뒤로가기
+                    </button>
+                    
+                    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                        <div class="bg-green-600 text-white p-6">
+                            <h2 class="text-xl md:text-2xl font-bold">${surveyData.title}</h2>
+                            <p class="mt-2 text-green-100 text-sm">본 설문은 무기명으로 진행되며, 응답하신 내용은 통계 및 개선 목적으로만 활용됩니다.</p>
+                        </div>
+                        
+                        <form id="survey-form" class="p-6 md:p-8" onsubmit="submitSurvey(event, '${type}')">
+            `;
+
+            if (surveyData.requiresProgramName) {
+                let inputOptions = '';
+                if (window.currentRole === 'student_low') {
+                    const programs = ["감성음악(1~2학년)", "스토리텔링영어(1~2학년)", "놀이체육", "창의과학", "창의컴퓨터"];
+                    let optionsHtml = '<option value="" disabled selected>참여 중인 프로그램을 선택하세요</option>';
+                    programs.forEach(p => {
+                        const isDone = window.completedPrograms.includes(p);
+                        optionsHtml += `<option value="${p}" ${isDone ? 'disabled' : ''}>${p}${isDone ? ' (설문 완료)' : ''}</option>`;
+                    });
+                    inputOptions = `
+                        <select id="programName" required class="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition bg-white text-gray-800">
+                            ${optionsHtml}
+                        </select>
+                    `;
+                } else if (window.currentRole === 'student_high') {
+                    const programs = ["창작심리미술", "스토리텔링영어(3~6학년)", "국악", "감성음악(3~6학년)", "생활체육", "드론스포츠", "놀이체육(3~6학년)"];
+                    let optionsHtml = '<option value="" disabled selected>참여 중인 프로그램을 선택하세요</option>';
+                    programs.forEach(p => {
+                        const isDone = window.completedPrograms.includes(p);
+                        optionsHtml += `<option value="${p}" ${isDone ? 'disabled' : ''}>${p}${isDone ? ' (설문 완료)' : ''}</option>`;
+                    });
+                    inputOptions = `
+                        <select id="programName" required class="w-full p-3 border border-gray-300 rounded focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition bg-white text-gray-800">
+                            ${optionsHtml}
+                        </select>
+                    `;
+                }
+
+                formHTML += `
+                            <div class="mb-8 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                                <label for="programName" class="block font-bold mb-2 text-gray-800">
+                                    <span class="text-red-500 mr-1">*</span>참여 프로그램명
+                                </label>
+                                ${inputOptions}
+                            </div>
+                `;
+            }
+
+            surveyData.questions.forEach((q, idx) => {
+                formHTML += `
+                    <div class="mb-8 pb-8 ${idx !== surveyData.questions.length - 1 ? 'border-b border-gray-100' : ''}">
+                        <h4 class="font-bold text-gray-800 mb-4 whitespace-pre-wrap leading-relaxed">${q.text}</h4>
+                `;
+
+                if (q.type === 'scale') {
+                    formHTML += `<div class="grid grid-cols-1 sm:grid-cols-5 gap-2">`;
+                    q.labels.forEach((label, i) => {
+                        const valNumber = i + 1;
+                        const uniqueId = `${q.id}_${valNumber}`;
+                        formHTML += `
+                            <div class="relative">
+                                <input type="radio" name="${q.id}" id="${uniqueId}" value="${label}" required class="peer sr-only scale-radio">
+                                <label for="${uniqueId}" class="flex flex-col items-center justify-center p-3 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 transition text-sm text-center h-full">
+                                    <span class='inline-block w-6 h-6 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center text-xs mb-1'>${valNumber}</span>
+                                    <span class="font-medium text-gray-700">${label}</span>
+                                </label>
+                            </div>
+                        `;
+                    });
+                    formHTML += `</div>`;
+                } else if (q.type === 'text') {
+                    formHTML += `
+                        <textarea name="${q.id}" rows="3" placeholder="자유롭게 의견을 적어주세요." class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition resize-none"></textarea>
+                    `;
+                }
+                formHTML += `</div>`;
+            });
+
+            formHTML += `
+                            <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-lg shadow-lg transition text-lg mt-4">
+                                설문 제출하기
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            `;
+            container.innerHTML = formHTML;
+        };
+
+        window.submitSurvey = function(event, type) {
+            event.preventDefault(); // 화면 새로고침 방지
+            
+            // 버튼 비활성화 (중복 제출 방지)
+            const submitBtn = event.target.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.innerText = "제출 중...";
+            submitBtn.classList.replace('bg-green-600', 'bg-gray-400');
+
+            const form = event.target;
+            const formData = new FormData(form);
+            
+            // 전송할 데이터 조립
+            let response = {
+                timestamp: new Date().toLocaleString('ko-KR'), // 보기 편한 한국 시간
+                type: type,
+                role: window.currentRole
+            };
+
+            const surveyData = window.questionBanks[type];
+            if (surveyData.requiresProgramName) {
+                response.programName = document.getElementById('programName').value;
+                window.completedPrograms.push(response.programName); // 완료 목록에 추가
+            }
+
+            surveyData.questions.forEach(q => {
+                response[q.id] = formData.get(q.id) || "";
+            });
+
+            // 구글 시트로 데이터 발송 (백그라운드 전송)
+            fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify(response)
+            })
+            .then(res => {
+                console.log("구글 시트 전송 완료");
+                window.navigate('survey_complete', { type: type });
+            })
+            .catch(e => {
+                console.error("전송 실패:", e);
+                alert("제출 중 오류가 발생했습니다. 다시 시도해주세요.");
+                submitBtn.disabled = false;
+                submitBtn.innerText = "설문 제출하기";
+                submitBtn.classList.replace('bg-gray-400', 'bg-green-600');
+            });
+        };
+
+        window.renderSurveyComplete = function(container, type) {
+            let actionButtons = '';
+            
+            if (type === 'programSpecific') {
+                actionButtons = `
+                    <button onclick="navigate('survey_form', {type: 'programSpecific'})" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-lg transition shadow-md mb-3">
+                        <i class="fa-solid fa-rotate-right mr-2"></i>다른 강좌 추가 설문하기
+                    </button>
+                    <button onclick="navigate('home')" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 rounded-lg transition">
+                        <i class="fa-solid fa-house mr-2"></i>처음으로 돌아가기
+                    </button>
+                `;
+            } else {
+                actionButtons = `
+                    <button onclick="navigate('home')" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition shadow-md">
+                        <i class="fa-solid fa-check mr-2"></i>확인 (처음으로)
+                    </button>
+                `;
+            }
+
+            container.innerHTML = `
+                <div class="w-full flex flex-col items-center justify-center flex-grow fade-in mt-10">
+                    <div class="bg-white p-8 rounded-2xl shadow-lg text-center max-w-sm w-full border-t-4 border-green-500">
+                        <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fa-solid fa-check text-3xl text-green-500"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold mb-2 text-gray-800">제출 완료</h2>
+                        <p class="text-gray-600 mb-8">설문이 성공적으로 제출되었습니다.<br>참여해 주셔서 감사합니다!</p>
+                        <div class="flex flex-col gap-2">
+                            ${actionButtons}
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        // 앱 시작
+        window.onload = () => {
+            window.navigate('home');
+        };
+    </script>
+</body>
+</html>
